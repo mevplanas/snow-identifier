@@ -1,2 +1,10 @@
 images/
 cropped_images/
+videos/
+input/
+output/
+database.db
+.vscode/
+__pycache__/
+output_videos/
+configuration.yml
