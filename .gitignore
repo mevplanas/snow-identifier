@@ -8,3 +8,4 @@ database.db
 __pycache__/
 output_videos/
 configuration.yml
+mssql-creds.env
