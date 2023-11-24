@@ -1,0 +1,107 @@
+# Import OS packages
+import os
+
+# Import configuration
+import yaml
+
+# Import Azure API
+from azure.storage.blob import BlobServiceClient, __version__
+
+# Import time
+from datetime import datetime, timedelta
+
+from tqdm import tqdm
+
+IMAGE_FORMATS = (".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG")
+
+
+def get_blob_names_by_days(config: yaml, days_ago: int = 7) -> list:
+    """
+
+    This function gets names (paths) of blobs that were uploaded today (by metadata).
+
+    Arguments
+    config: yaml
+        Configuration file as dictionary.
+    days_ago: int
+        days before today
+
+    Outputs
+    List of blob names (paths) that were uploaded today.
+
+    """
+
+    # Define the connection string and container name
+    connect_str = config["AZURE_INPUT"]["conn_string"]
+    container_name = config["AZURE_INPUT"]["container_name"]
+
+    # Create a BlobServiceClient object
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+
+    # Get a BlobClient object for the container
+    container_client = blob_service_client.get_container_client(container_name)
+
+    # Get the date range to filter blobs
+    query_date = datetime.utcnow().date() - timedelta(days=days_ago)
+
+    # Filter blobs by creation time
+    image_blobs_to_use = []
+    current_blobs = container_client.list_blobs(
+        name_starts_with=None, include=["metadata"]
+    )
+    for blob in tqdm(current_blobs, desc="Getting current blobs"):
+        if blob.creation_time.date() >= query_date and blob.name.endswith(
+            IMAGE_FORMATS
+        ):
+            image_blobs_to_use.append(blob.name)
+
+    return image_blobs_to_use
+
+
+def download_image(blob_name: str, config: yaml, local_file_dir: str) -> None:
+    """
+
+    This function saves blob locally as image.
+
+    Arguments
+    blob_name: str
+        Blob name as path which to download.
+    config: yaml
+        Configuration file as dictionary.
+    local_file_dir: str
+        Directory where to save blob.
+
+    Outputs
+    None
+
+    """
+
+    connect_str = config["AZURE_INPUT"]["conn_string"]
+    container_name = config["AZURE_INPUT"]["container_name"]
+
+    # Create a BlobServiceClient object
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+
+    # Get a BlobClient object for the blob to download
+    blob_client = blob_service_client.get_blob_client(
+        container=container_name, blob=blob_name
+    )
+
+    # Extracting the last part of the blob name
+    blob_img_name = blob_name.split("/")[-1]
+
+    # Extracting the path to blob
+    blob_path = "/".join(blob_name.split("/")[:-1])
+
+    # Check if path exists
+    blob_local_dir = os.path.join(local_file_dir, blob_path)
+    if not os.path.exists(blob_local_dir):
+        os.makedirs(blob_local_dir)
+
+    # Download the blob to a local file
+    with open(os.path.join(blob_local_dir, blob_img_name), "wb") as blob:
+        try:
+            download_stream = blob_client.download_blob()
+            blob.write(download_stream.readall())
+        except Exception as e:
+            print(f"Cannot download blob: {e}")
