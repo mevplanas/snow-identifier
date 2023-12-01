@@ -5,6 +5,7 @@ from sqlalchemy.orm import declarative_base
 from db.connection import SQLServerConnection as ssc
 
 import pandas as pd
+from datetime import datetime
 
 
 class Geometry(UserDefinedType):
@@ -38,14 +39,79 @@ class ImagePredictions(Base):
     image_name = Column(VARCHAR)
     datetime_processed = Column(DateTime)
     prediction_prob = Column(DOUBLE)
+    prediction_class = Column(VARCHAR)
     image_link = Column(VARCHAR)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now())
 
     @classmethod
-    def read_all(cls):
+    def read_distinct(cls):
         results = pd.read_sql(
-            f"SELECT * FROM {cls.__table_args__['schema']}.{cls.__tablename__}",
+            f"SELECT distinct image_name from {cls.__table_args__['schema']}.{cls.__tablename__}",
             ssc().engine(),
         )
         return results
+
+    @classmethod
+    def insert_data(
+        cls,
+        id: int,
+        image_name: str,
+        datetime_processed: datetime,
+        prediction_prob: float,
+        image_link: str,
+        Shape,
+    ):
+        """
+        The function writes image logs into database
+
+        Arguments
+        ---------
+        images: str
+            list with blob images from Azure Storage
+        log_date: str
+            date when data has been read from Azure Storage
+        """
+        session = ssc().create_session()
+
+        # Creating list with blob image names values
+        data = cls(
+            OBJECTID=id,
+            image_name=image_name,
+            datetime_processed=datetime_processed,
+            prediction_prob=prediction_prob,
+            image_link=image_link,
+            Shape=Shape,
+        )
+
+        # Push data to database
+        session.add(data)
+        session.commit()
+        session.close()
+
+    @classmethod
+    def select_max_id(cls):
+        """
+        The function returns max id value
+
+        Output
+        ------
+        max_value: int
+            max id value from vasa data table
+        """
+        session = ssc().create_session()
+        data = session.query(func.max(cls.OBJECTID)).first()
+        max_value = data[0]
+        session.close()
+
+        return max_value
+
+    @classmethod
+    def insert_records(cls, records: list[dict]) -> None:
+        """
+        Insert OSM data into database.
+        """
+        session = ssc().create_session()
+        session.bulk_insert_mappings(cls, records)
+        session.commit()
+        session.close()

@@ -1,8 +1,6 @@
 PADDING: 25
 
 AZURE_INPUT_SNOW:
-  account_url: ''
-  credentials: ''
   conn_string: ''
   container_name: ''
-  account_name: ''
+
