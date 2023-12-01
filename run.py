@@ -47,22 +47,34 @@ from azure.storage.blob import BlobServiceClient, __version__
 
 IMAGE_FORMATS = (".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG")
 
-
-def image_link_generator(file_path: str) -> str:
-    storage_url = "https://vp3ddata.blob.core.windows.net/raw-data-bo-nuotraukos/"
-
+def image_link_generator(
+        file_path: str, 
+        image_dir_prefix: str = 'images',
+        storage_url: str = "https://vp3ddata.blob.core.windows.net/raw-data-bo-nuotraukos/"
+        ) -> str:
     if platform == "win32":
         # Creating the target name
-        _target_name = file_path.split("images\\")[-1]
+        _target_name = file_path.split(f"{image_dir_prefix}\\")[-1]
         target_name = re.sub("\\\\", "/", _target_name)
     else:
-        _target_name = file_path.split("images/")[-1]
+        _target_name = file_path.split(f"{image_dir_prefix}/")[-1]
         target_name = re.sub("//|/", "/", _target_name)
 
     blob_url = f"{storage_url}{target_name}"
 
     return blob_url
 
+# Creating a dictionary of colors 
+COLOR_DICT = {
+    "red": (0, 0, 255),
+    "green": (0, 255, 0),
+    "blue": (255, 0, 0),
+    "yellow": (0, 255, 255),
+    "magenta": (255, 0, 255),
+    "cyan": (255, 255, 0),
+    "white": (255, 255, 255),
+    "black": (0, 0, 0),
+}
 
 def get_meta(file_path):
     """
@@ -117,7 +129,6 @@ def get_meta(file_path):
 
     return long, lat
 
-
 # Defining the function for prediction
 def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> float:
     """
@@ -167,10 +178,16 @@ def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> floa
     top_left = x_min, y_max
     bottom_right = x_max, y_min
 
-    # Opening image with cv2
-    # colored_image = cv2.imread(open_cv_image)
+    # Converting the colored img to RGB
+    colored_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2RGB)
+
+    # Drawubg a rectangle on top
     colored_image = cv2.rectangle(
-        open_cv_image, top_left, bottom_right, color=(255, 0, 0), thickness=3
+        colored_image, 
+        top_left, 
+        bottom_right, 
+        color=COLOR_DICT.get("red"), 
+        thickness=2
     )
 
     # Saving colored image
@@ -179,7 +196,6 @@ def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> floa
     # Returning the probability
     return mean_pixel_value
 
-
 def infer_label(prob: float) -> str:
     if prob < 0.33:
         return "no_snow"
@@ -187,7 +203,6 @@ def infer_label(prob: float) -> str:
         return "maybe_snow"
     else:
         return "snow"
-
 
 # Defining the pipeline
 def pipeline(env: str = "dev") -> None:
@@ -204,6 +219,7 @@ def pipeline(env: str = "dev") -> None:
     # Extracting the padding for the snow box
     box_padding = config["PADDING"]
 
+    # Connecting to the container where we will store the output
     connect_str = config["AZURE_INPUT_VASA"]["conn_string"]
     container_name = config["AZURE_INPUT_VASA"]["output_container_name"]
 
@@ -215,7 +231,7 @@ def pipeline(env: str = "dev") -> None:
 
     # # Initializing the database
     # conn = sqlite3.connect(os.path.join(current_dir, "database.db"))
-
+    images = []
     if env == "dev":
         # Listing the input images
         images = os.listdir(os.path.join(current_dir, "input"))
@@ -231,7 +247,6 @@ def pipeline(env: str = "dev") -> None:
                 blob_name=img, config=config, local_file_dir=images_local_dir
             )
 
-        images = []
         for root, dirs, files in os.walk(images_local_dir):
             for file in files:
                 # Infering whether the file ends with .jpg, .JPG, .jpeg, .png, .PNG
@@ -241,77 +256,90 @@ def pipeline(env: str = "dev") -> None:
                     # Appending to the list of images to infer
                     images.append(file)
 
-    db_images = ImagePredictions.read_distinct()
-    result = db_images["image_name"].tolist()
+    # Defining the default obj_id 
+    obj_id = 0
+    images_to_process = images.copy()
 
-    # Infering the images that are not in the database
-    images_to_process = [image for image in images if image not in result]
+    try:
+        # Reading the database
+        db_images = ImagePredictions.read_distinct()
+        result = db_images["image_name"].tolist()
 
-    # Creating the output dir
-    output_path = os.path.join(current_dir, "output")
-    os.makedirs(output_path, exist_ok=True)
+        # Infering the images that are not in the database
+        images_to_process = [image for image in images if image not in result]
 
-    # Get last object id in database
-    obj_id = ImagePredictions.select_max_id()
-    if obj_id == None:
+        # Creating the output dir
+        output_path = os.path.join(current_dir, "output")
+        os.makedirs(output_path, exist_ok=True)
+
+        # Get last object id in database
+        obj_id = ImagePredictions.select_max_id()
+        if obj_id == None:
+            obj_id = 0
+        else:
+            obj_id += 1
+    except Exception as e:
+        print(e)
         obj_id = 0
-    else:
-        obj_id += 1
 
     # Defining directory for colored images
     output_dir = os.path.join(current_dir, "colored_images")
     os.makedirs(output_dir, exist_ok=True)
 
+    # Creating a placeholder to store the results 
+    records = []
+
     # Iterating over the images
     for image in tqdm(images_to_process):
         # Defining colored image path
-        image_output_path = os.path.basename(image)
+        image_output_path = os.path.join(output_dir, os.path.basename(image))
 
         # Getting the mean pixel value
         mean_pixel_value = infer_snow(
             image, box_padding=box_padding, output_path=image_output_path
         )
 
-        with open(file=image_output_path, mode="rb") as data:
-            container_client.upload_blob(name=image, data=data, overwrite=True)
+        # Generating the image link 
+        image_link_colored = image_link_generator(image, storage_url=config["AZURE_INPUT_VASA"]["output_container_url"])
+        try:
+            with open(file=image_output_path, mode="rb") as data:
+                # Uploading
+                container_client.upload_blob(name=image_link_colored, data=data, overwrite=True)
+        except Exception as e:
+            print(e)
 
         # Infering the label
         label = infer_label(mean_pixel_value)
 
+        # Generating the image link (original)
         image_link = image_link_generator(image)
 
+        # Getting the metadata
         x, y = get_meta(image)
         point_geom = str(Point(x, y))
 
-        record = [
+        records.append(
             {
                 "OBJECTID": obj_id,
                 "image_name": image,
                 "prediction_prob": mean_pixel_value,
                 "prediction_class": label,
                 "image_link_original": image_link,
-                "image_link_processed": image_link,
+                "image_link_processed": image_link_colored,
                 "datetime_processed": str(datetime.now()),
                 "Shape": point_geom,
             }
-        ]
+        )
 
-        # upload_image(config=config, colored_img_name=)
-        ImagePredictions.insert_records(record)
-
-        # Saving the image to json to output path
-        with open(os.path.join(output_path, image.replace(".jpg", ".json")), "w") as f:
-            json.dump(
-                {
-                    "image_name": image,
-                    "datetime_processed": str(datetime.now()),
-                    "prediction_prob": mean_pixel_value,
-                    "prediction_class": label,
-                },
-                f,
-            )
+        # Incrementing the object id
         obj_id += 1
 
+        # Removing the image from the local dir 
+        os.remove(image)
+        os.remove(image_output_path)
+
+    # Uploading the MSS database
+    ImagePredictions.insert_records(records)
 
 if __name__ == "__main__":
     pipeline(env="prod")
