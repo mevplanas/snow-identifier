@@ -3,4 +3,5 @@ PADDING: 25
 AZURE_INPUT_SNOW:
   conn_string: ''
   container_name: ''
-
+  output_container_name: 'snow-identifer-output'
+  output_container_url: https://vp3ddata.blob.core.windows.net/snow-identifer-output/
