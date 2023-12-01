@@ -222,14 +222,14 @@ def pipeline(env: str = "dev") -> None:
     else:
         # Define direcotry where image will be stored
         images_local_dir = os.path.join(current_dir, "images")
-        # os.makedirs(images_local_dir, exist_ok=True)
-        # # Get images blob name form Azure Storage
-        # storage_images = get_blobs_by_folder_name(config=config)
-        # # Downloading images from Azure storage to local dir
-        # for img in tqdm(storage_images, desc="Downloading images from Azure Storage:"):
-        #     download_image(
-        #         blob_name=img, config=config, local_file_dir=images_local_dir
-        #     )
+        os.makedirs(images_local_dir, exist_ok=True)
+        # Get images blob name form Azure Storage
+        storage_images = get_blobs_by_folder_name(config=config)
+        # Downloading images from Azure storage to local dir
+        for img in tqdm(storage_images, desc="Downloading images from Azure Storage:"):
+            download_image(
+                blob_name=img, config=config, local_file_dir=images_local_dir
+            )
 
         images = []
         for root, dirs, files in os.walk(images_local_dir):
