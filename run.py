@@ -1,13 +1,6 @@
 # Importing OS
 import os
 
-# SQLIte database for infered images
-import sqlite3
-
-# JSON file handling
-import json
-from textwrap import fill
-
 # Computer vision
 import cv2
 
@@ -43,8 +36,6 @@ import re
 # Import geometry
 from shapely.geometry import Point
 from shapely import wkt
-
-from azure.storage.blob import BlobServiceClient, __version__
 
 IMAGE_FORMATS = (".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG")
 

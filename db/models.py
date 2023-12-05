@@ -152,8 +152,6 @@ class InspectionPoints(Base):
 
         session.close()
 
-        # data = query_converter(query_return=query)
-
         columns = data.column_descriptions
         cols = []
         for a in columns:
