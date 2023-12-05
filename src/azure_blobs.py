@@ -5,7 +5,7 @@ import os
 import yaml
 
 # Import Azure API
-from azure.storage.blob import BlobServiceClient, __version__
+from azure.storage.blob import BlobServiceClient, __version__, ContentSettings
 
 # Import time
 from datetime import datetime, timedelta
@@ -160,10 +160,15 @@ def upload_image(config: yaml, colored_img_name: str, img_bytes: bytes) -> None:
     connect_str = config["AZURE_INPUT_VASA"]["conn_string"]
     container_name = config["AZURE_INPUT_VASA"]["output_container_name"]
 
+    # Define image content type
+    image_content_type = ContentSettings(content_type="image/jpeg")
+
     # Create a BlobServiceClient object
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
 
     # Get a BlobClient object for the container
     container_client = blob_service_client.get_container_client(container_name)
 
-    container_client.upload_blob(colored_img_name, img_bytes)
+    container_client.upload_blob(
+        colored_img_name, img_bytes, content_settings=image_content_type
+    )

@@ -1,11 +1,19 @@
 from sqlalchemy.types import UserDefinedType
-from sqlalchemy import DateTime, Column, Integer, func, VARCHAR, DOUBLE, text
+from sqlalchemy import DateTime, Column, Integer, func, VARCHAR, DOUBLE, text, cast
 from sqlalchemy.orm import declarative_base
 
 from db.connection import SQLServerConnection as ssc
 
 import pandas as pd
 from datetime import datetime
+
+
+def query_converter(query_return):
+    """
+    The function converts sql query values to list[dict]
+    """
+    data_list = [dict(zip(x.keys(), x)) for x in query_return.all()]
+    return data_list
 
 
 class Geometry(UserDefinedType):
@@ -40,7 +48,11 @@ class ImagePredictions(Base):
     datetime_processed = Column(DateTime)
     prediction_prob = Column(DOUBLE)
     prediction_class = Column(VARCHAR)
-    image_link = Column(VARCHAR)
+    image_link_original = Column(VARCHAR)
+    image_link_processed = Column(VARCHAR)
+    inspection_object = Column(Integer)
+    inspection_object_name = Column(VARCHAR)
+    manager = Column(VARCHAR)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now())
 
@@ -115,3 +127,43 @@ class ImagePredictions(Base):
         session.bulk_insert_mappings(cls, records)
         session.commit()
         session.close()
+
+
+class InspectionPoints(Base):
+    __tablename__ = "SNOW_INSPECTION_POINTS"
+    __table_args__ = {"schema": "BO_DATA"}
+
+    OBJECTID = Column(Integer, primary_key=True, autoincrement=False)
+    Shape = Column(Geometry)
+    object = Column(Integer)
+    object_name = Column(VARCHAR)
+    manager = Column(VARCHAR)
+
+    @classmethod
+    def get_all(cls):
+        session = ssc().create_session()
+
+        data = session.query(
+            cls.object,
+            cls.object_name,
+            cls.manager,
+            cast(cls.Shape, VARCHAR("MAX")).label("Shape"),
+        )
+
+        session.close()
+
+        # data = query_converter(query_return=query)
+
+        columns = data.column_descriptions
+        cols = []
+        for a in columns:
+            cols.append(a["name"])
+
+        data = data.all()
+
+        list_of_dicts = []
+        for x in data:
+            elements = dict(zip(cols, x))
+            list_of_dicts.append(elements)
+
+        return list_of_dicts
