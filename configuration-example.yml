@@ -1,6 +1,6 @@
 PADDING: 25
 
-AZURE_INPUT_SNOW:
+AZURE_INPUT_VASA:
   conn_string: ''
   container_name: ''
   output_container_name: 'snow-identifer-output'

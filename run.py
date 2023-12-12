@@ -1,13 +1,6 @@
 # Importing OS
 import os
 
-# SQLIte database for infered images
-import sqlite3
-
-# JSON file handling
-import json
-from textwrap import fill
-
 # Computer vision
 import cv2
 
@@ -35,23 +28,23 @@ from src.azure_blobs import download_image, get_blobs_by_folder_name, upload_ima
 from sys import platform
 
 # Import database models
-from db.models import ImagePredictions
+from db.models import ImagePredictions, InspectionPoints
 
 # Import string wrangling
 import re
 
 # Import geometry
 from shapely.geometry import Point
-
-from azure.storage.blob import BlobServiceClient, __version__
+from shapely import wkt
 
 IMAGE_FORMATS = (".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG")
 
+
 def image_link_generator(
-        file_path: str, 
-        image_dir_prefix: str = 'images',
-        storage_url: str = "https://vp3ddata.blob.core.windows.net/raw-data-bo-nuotraukos/"
-        ) -> str:
+    file_path: str,
+    image_dir_prefix: str = "images",
+    storage_url: str = "https://vp3ddata.blob.core.windows.net/raw-data-bo-nuotraukos/",
+) -> str:
     if platform == "win32":
         # Creating the target name
         _target_name = file_path.split(f"{image_dir_prefix}\\")[-1]
@@ -64,7 +57,8 @@ def image_link_generator(
 
     return blob_url
 
-# Creating a dictionary of colors 
+
+# Creating a dictionary of colors
 COLOR_DICT = {
     "red": (0, 0, 255),
     "green": (0, 255, 0),
@@ -75,6 +69,50 @@ COLOR_DICT = {
     "white": (255, 255, 255),
     "black": (0, 0, 0),
 }
+
+
+def get_closest(input_point: tuple, intrest_points: list[dict]) -> dict:
+    """
+    The function gets closest point from inspection points.
+
+    Arguments
+    ---------
+    input_point: tuple
+        latitude and longitude coordinate of image center
+    intrest_points: list[dict]
+        inspection points
+
+    Output
+    ------
+    closest_point: dict
+        closest inspection point between image coordinates
+    """
+
+    # List where distance between image coordinates and inspection point be storded
+    distances = []
+
+    # Iterate through inspection points
+    for _point in intrest_points:
+        # Geometry value from dictionary
+        str_geom = _point.get("Shape")
+        # Convert string geometry into WKT (well know binary) geometry
+        geom = wkt.loads(str_geom)
+        # Get distance between inspection point and image coordinates
+        distance = ((geom.y - input_point[0]) ** 2) + ((geom.x - input_point[1]) ** 2)
+        # Append distance to list
+        distances.append(distance)
+
+    # Get minimum value from distance list
+    min_distance = min(distances)
+
+    # What index value with minimum distance
+    index_value = distances.index(min_distance)
+
+    # By minimum distance index value get inspection point dictionary
+    closest_point = intrest_points[index_value]
+
+    return closest_point
+
 
 def get_meta(file_path):
     """
@@ -128,6 +166,7 @@ def get_meta(file_path):
     lat = float(gpsinfo[4][0]) + decimal_lat
 
     return long, lat
+
 
 # Defining the function for prediction
 def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> float:
@@ -183,11 +222,7 @@ def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> floa
 
     # Drawubg a rectangle on top
     colored_image = cv2.rectangle(
-        colored_image, 
-        top_left, 
-        bottom_right, 
-        color=COLOR_DICT.get("red"), 
-        thickness=2
+        colored_image, top_left, bottom_right, color=COLOR_DICT.get("red"), thickness=2
     )
 
     # Saving colored image
@@ -196,6 +231,7 @@ def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> floa
     # Returning the probability
     return mean_pixel_value
 
+
 def infer_label(prob: float) -> str:
     if prob < 0.33:
         return "no_snow"
@@ -203,6 +239,7 @@ def infer_label(prob: float) -> str:
         return "maybe_snow"
     else:
         return "snow"
+
 
 # Defining the pipeline
 def pipeline(env: str = "dev") -> None:
@@ -218,16 +255,6 @@ def pipeline(env: str = "dev") -> None:
 
     # Extracting the padding for the snow box
     box_padding = config["PADDING"]
-
-    # Connecting to the container where we will store the output
-    connect_str = config["AZURE_INPUT_VASA"]["conn_string"]
-    container_name = config["AZURE_INPUT_VASA"]["output_container_name"]
-
-    # Create a BlobServiceClient object
-    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-
-    # Get a BlobClient object for the container
-    container_client = blob_service_client.get_container_client(container_name)
 
     # # Initializing the database
     # conn = sqlite3.connect(os.path.join(current_dir, "database.db"))
@@ -256,7 +283,10 @@ def pipeline(env: str = "dev") -> None:
                     # Appending to the list of images to infer
                     images.append(file)
 
-    # Defining the default obj_id 
+    # Get inspection points from MSS database
+    inspection_points = InspectionPoints.get_all()
+
+    # Defining the default obj_id
     obj_id = 0
     images_to_process = images.copy()
 
@@ -286,7 +316,7 @@ def pipeline(env: str = "dev") -> None:
     output_dir = os.path.join(current_dir, "colored_images")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Creating a placeholder to store the results 
+    # Creating a placeholder to store the results
     records = []
 
     # Iterating over the images
@@ -299,12 +329,21 @@ def pipeline(env: str = "dev") -> None:
             image, box_padding=box_padding, output_path=image_output_path
         )
 
-        # Generating the image link 
-        image_link_colored = image_link_generator(image, storage_url=config["AZURE_INPUT_VASA"]["output_container_url"])
+        # Generating the image link
+        image_link_colored = image_link_generator(
+            image, storage_url=config["AZURE_INPUT_VASA"]["output_container_url"]
+        )
         try:
             with open(file=image_output_path, mode="rb") as data:
+                _img = image.split(os.sep)
+                img_index = _img.index("images") + 1
+                blob_img_path = os.path.join(*_img[img_index:])
                 # Uploading
-                container_client.upload_blob(name=image_link_colored, data=data, overwrite=True)
+                upload_image(
+                    config=config,
+                    colored_img_name=blob_img_path,
+                    img_bytes=data,
+                )
         except Exception as e:
             print(e)
 
@@ -316,7 +355,12 @@ def pipeline(env: str = "dev") -> None:
 
         # Getting the metadata
         x, y = get_meta(image)
-        point_geom = str(Point(x, y))
+
+        # Crete Point geometry
+        point_geom = str(Point(y, x))
+
+        # Get closest inpection point from inspection_points list
+        inspection_point_dict = get_closest((x, y), intrest_points=inspection_points)
 
         records.append(
             {
@@ -327,6 +371,9 @@ def pipeline(env: str = "dev") -> None:
                 "image_link_original": image_link,
                 "image_link_processed": image_link_colored,
                 "datetime_processed": str(datetime.now()),
+                "inspection_object": inspection_point_dict.get("object"),
+                "inspection_object_name": inspection_point_dict.get("object_name"),
+                "manager": inspection_point_dict.get("manager"),
                 "Shape": point_geom,
             }
         )
@@ -334,12 +381,13 @@ def pipeline(env: str = "dev") -> None:
         # Incrementing the object id
         obj_id += 1
 
-        # Removing the image from the local dir 
+        # Removing the image from the local dir
         os.remove(image)
         os.remove(image_output_path)
 
     # Uploading the MSS database
     ImagePredictions.insert_records(records)
+
 
 if __name__ == "__main__":
     pipeline(env="prod")
