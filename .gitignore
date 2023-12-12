@@ -10,3 +10,5 @@ output_videos/
 configuration.yml
 mssql-creds.env
 colored_images/
+*.pt
+*.pth
