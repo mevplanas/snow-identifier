@@ -39,7 +39,6 @@ from shapely import wkt
 
 IMAGE_FORMATS = (".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG")
 
-
 def image_link_generator(
     file_path: str,
     image_dir_prefix: str = "images",
@@ -113,7 +112,6 @@ def get_closest(input_point: tuple, intrest_points: list[dict]) -> dict:
 
     return closest_point
 
-
 def get_meta(file_path):
     """
     The functions extracts exif metadata from image
@@ -166,7 +164,6 @@ def get_meta(file_path):
     lat = float(gpsinfo[4][0]) + decimal_lat
 
     return long, lat
-
 
 # Defining the function for prediction
 def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> float:
@@ -231,7 +228,6 @@ def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> floa
     # Returning the probability
     return mean_pixel_value
 
-
 def infer_label(prob: float) -> str:
     if prob < 0.33:
         return "no_snow"
@@ -239,7 +235,6 @@ def infer_label(prob: float) -> str:
         return "maybe_snow"
     else:
         return "snow"
-
 
 # Defining the pipeline
 def pipeline(env: str = "dev") -> None:
