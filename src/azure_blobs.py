@@ -115,7 +115,10 @@ def download_image(blob_name: str, config: yaml, local_file_dir: str) -> None:
             print(f"Cannot download blob: {e}")
 
 
-def get_blobs_by_folder_name(config: yaml) -> list:
+def get_blobs_by_folder_name(
+    config: yaml,
+    name_starts_with: str = "RnD/Gatvių valymas/2023-2024/20231130 Ateieties-Jaruzales-saligatviai/",
+) -> list:
     """
 
     This function gets names (paths) of blobs that were uploaded today (by metadata).
@@ -145,7 +148,7 @@ def get_blobs_by_folder_name(config: yaml) -> list:
     image_blobs_to_use = []
 
     current_blobs = container_client.list_blobs(
-        name_starts_with="RnD/Gatvių valymas/2023-2024/20231130 Ateieties-Jaruzales-saligatviai/",
+        name_starts_with=name_starts_with,
         include=["metadata"],
     )
     for blob in tqdm(current_blobs, desc="Getting current blobs"):
