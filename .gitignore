@@ -12,3 +12,7 @@ mssql-creds.env
 colored_images/
 *.pt
 *.pth
+input_points/
+labels/
+runs/
+machine_learning/

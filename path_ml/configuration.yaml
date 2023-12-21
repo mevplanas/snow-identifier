@@ -1,0 +1,7 @@
+path: C:\Users\Admin\projects\snow-identifier\path_ml\machine_learning # dataset root dir
+train: train/images # train images (relative to 'path')
+val: val/images # val images (relative to 'path')
+# number of classes
+nc: 1
+# class names
+names: ["sidewalk"]
