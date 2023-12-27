@@ -30,7 +30,7 @@ def infer_label(prob: float, prob_dict: dict) -> str:
         return label
 
     if prob < prob_dict.get("no_snow", 0.5):
-        label = "no snow"
+        label = "no_snow"
     elif prob < prob_dict.get("maybe_snow", 0.75):
         label = "maybe_snow"
     elif prob < prob_dict.get("snow", 1.0):
