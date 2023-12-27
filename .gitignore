@@ -10,7 +10,7 @@ output_videos/
 configuration.yml
 mssql-creds.env
 colored_images/
-*.pt
+FastSAM-s.pt
 *.pth
 input_points/
 labels/
