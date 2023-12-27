@@ -76,7 +76,7 @@ def pipeline(env: str = "dev") -> None:
         prefix = config["AZURE_INPUT"]["blob_prefix"]
         # Get images blob name form Azure Storage
         storage_images = get_blobs_by_folder_name(
-            config=config, name_starts_with="20231201Ateities Jeruzales/DJI_0227"
+            config=config, name_starts_with=prefix
         )
         # Downloading images from Azure storage to local dir
         for img in tqdm(storage_images, desc="Downloading images from Azure Storage:"):
