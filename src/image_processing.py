@@ -108,12 +108,22 @@ def get_poly(geom):
 
 def get_poly_coords(intersection):
     # Check geometry type
-    if intersection.geom_type == "GeometryCollection":
+    if (
+        intersection.geom_type == "GeometryCollection"
+        or intersection.geom_type == "MultiPolygon"
+    ):
         # If type geometry collection iterate until Polygon detected
+        area = 0
+        geom_holder = None
         for geom in intersection.geoms:
             if geom.geom_type == "Polygon":
-                poly = get_poly(geom)
-                return poly
+                if area < geom.area:
+                    area = geom.area
+                    geom_holder = geom
+                    continue
+                else:
+                    poly = get_poly(geom_holder)
+                    return poly
 
     elif intersection.geom_type == "LineString":
         return Polygon()
