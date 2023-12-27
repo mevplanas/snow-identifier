@@ -162,62 +162,67 @@ def pipeline(env: str = "dev") -> None:
             results = model.predict(image, conf=threshold)
 
             # Extracting all the masks
-            masks = results[0].masks.xy
-
-            # Calculating the center point of the image
-            center_point = (img.shape[1] / 2, img.shape[0] / 2)
-
-            # Getting closest mask
-            closest_mask = get_closest_mask(center_point=center_point, masks=masks)
-
-            # Get intersection polygon
-            intersection_geom = get_intersection_geom(
-                closest_mask=closest_mask,
-                center_point=center_point,
-                padding=box_padding,
-            )
-
-            poly_coords = get_poly_coords(intersection_geom)
-
-            # Draw poly on image
-            cv2.polylines(
-                img,
-                [poly_coords],
-                isClosed=False,
-                color=COLOR_DICT.get("red"),
-                thickness=5,
-            )
-
-            # Converting the image to grayscale
-            img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
-            # Create a mask
-            mask = np.zeros(img.shape[:2], dtype=np.uint8)
-
-            # Set mean value to 1 if no intersection between center bbox
-            # and closest mask was found
-            if intersection_geom.area == 0:
+            # If mask empty apply infer_snow function
+            if results[0].masks == None:
                 mean_val = infer_snow(image, image_output_path, infer_box_padding)
+            # Else apply closest mask
             else:
-                # Fill the polygon on the mask
-                cv2.fillPoly(mask, [poly_coords], 255)
+                masks = results[0].masks.xy
 
-                # Apply the mask to the image
-                masked_image = cv2.bitwise_and(img_gray, img_gray, mask=mask)
+                # Calculating the center point of the image
+                center_point = (img.shape[1] / 2, img.shape[0] / 2)
 
-                # Calculate the mean pixel value
-                # Use mask to ignore zero pixels in the mean calculation
+                # Getting closest mask
+                closest_mask = get_closest_mask(center_point=center_point, masks=masks)
 
-                mean_val = cv2.mean(masked_image, mask=mask)
+                # Get intersection polygon
+                intersection_geom = get_intersection_geom(
+                    closest_mask=closest_mask,
+                    center_point=center_point,
+                    padding=box_padding,
+                )
 
-                # Limiting the mean value to 0 - 1
-                mean_val = np.clip(mean_val[0] / 255, 0, 1)
+                poly_coords = get_poly_coords(intersection_geom)
 
-                # Rounding to 2 decimals
-                mean_val = round(mean_val, 2)
+                # Draw poly on image
+                cv2.polylines(
+                    img,
+                    [poly_coords],
+                    isClosed=False,
+                    color=COLOR_DICT.get("red"),
+                    thickness=5,
+                )
 
-                # Saving colored image
-                cv2.imwrite(image_output_path, img)
+                # Converting the image to grayscale
+                img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+                # Create a mask
+                mask = np.zeros(img.shape[:2], dtype=np.uint8)
+
+                # Set mean value to 1 if no intersection between center bbox
+                # and closest mask was found
+                if intersection_geom.area == 0:
+                    mean_val = infer_snow(image, image_output_path, infer_box_padding)
+                else:
+                    # Fill the polygon on the mask
+                    cv2.fillPoly(mask, [poly_coords], 255)
+
+                    # Apply the mask to the image
+                    masked_image = cv2.bitwise_and(img_gray, img_gray, mask=mask)
+
+                    # Calculate the mean pixel value
+                    # Use mask to ignore zero pixels in the mean calculation
+
+                    mean_val = cv2.mean(masked_image, mask=mask)
+
+                    # Limiting the mean value to 0 - 1
+                    mean_val = np.clip(mean_val[0] / 255, 0, 1)
+
+                    # Rounding to 2 decimals
+                    mean_val = round(mean_val, 2)
+
+                    # Saving colored image
+                    cv2.imwrite(image_output_path, img)
 
             # Generating the image link
             image_link_colored = image_link_generator(
