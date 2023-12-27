@@ -76,7 +76,7 @@ def pipeline(env: str = "dev") -> None:
         prefix = config["AZURE_INPUT"]["blob_prefix"]
         # Get images blob name form Azure Storage
         storage_images = get_blobs_by_folder_name(
-            config=config, name_starts_with=prefix
+            config=config, name_starts_with="20231201Ateities Jeruzales/DJI_0227"
         )
         # Downloading images from Azure storage to local dir
         for img in tqdm(storage_images, desc="Downloading images from Azure Storage:"):
@@ -184,26 +184,26 @@ def pipeline(env: str = "dev") -> None:
 
                 poly_coords = get_poly_coords(intersection_geom)
 
-                # Draw poly on image
-                cv2.polylines(
-                    img,
-                    [poly_coords],
-                    isClosed=False,
-                    color=COLOR_DICT.get("red"),
-                    thickness=5,
-                )
-
-                # Converting the image to grayscale
-                img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
-                # Create a mask
-                mask = np.zeros(img.shape[:2], dtype=np.uint8)
-
-                # Set mean value to 1 if no intersection between center bbox
-                # and closest mask was found
                 if intersection_geom.area == 0:
                     mean_val = infer_snow(image, image_output_path, infer_box_padding)
                 else:
+                    # Draw poly on image
+                    cv2.polylines(
+                        img,
+                        [poly_coords],
+                        isClosed=False,
+                        color=COLOR_DICT.get("red"),
+                        thickness=5,
+                    )
+
+                    # Converting the image to grayscale
+                    img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+                    # Create a mask
+                    mask = np.zeros(img.shape[:2], dtype=np.uint8)
+
+                    # Set mean value to 1 if no intersection between center bbox
+                    # and closest mask was found
                     # Fill the polygon on the mask
                     cv2.fillPoly(mask, [poly_coords], 255)
 

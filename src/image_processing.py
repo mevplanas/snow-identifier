@@ -114,6 +114,9 @@ def get_poly_coords(intersection):
             if geom.geom_type == "Polygon":
                 poly = get_poly(geom)
                 return poly
+
+    elif intersection.geom_type == "LineString":
+        return Polygon()
     else:
         poly = get_poly(intersection)
         return poly
