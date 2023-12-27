@@ -46,6 +46,7 @@ class ImagePredictions(Base):
     Shape = Column(Geometry)
     image_name = Column(VARCHAR)
     datetime_processed = Column(DateTime)
+    image_datetime = Column(DateTime)
     prediction_prob = Column(DOUBLE)
     prediction_class = Column(VARCHAR)
     image_link_original = Column(VARCHAR)

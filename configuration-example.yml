@@ -1,7 +1,15 @@
-PADDING: 25
+BBOX_PADDING: 150
+INFER_BBOX_PADDING: 25
 
-AZURE_INPUT_VASA:
-  conn_string: ''
-  container_name: ''
-  output_container_name: 'snow-identifer-output'
+PATH_DETECTION_MODEL: 
+  name: path_identifier.pt
+  threshold: 0.3
+
+LABELS_DICT: {'no_snow': 0.5, 'maybe_snow': 0.75, 'snow': 1.0}
+
+AZURE_INPUT:
+  conn_string: 
+  container_name: 'snow-identifier-input'
+  output_container_name: 'snow-identifier-output'
   output_container_url: https://vp3ddata.blob.core.windows.net/snow-identifer-output/
+  blob_prefix: ""

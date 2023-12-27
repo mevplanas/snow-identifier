@@ -84,8 +84,8 @@ def download_image(blob_name: str, config: yaml, local_file_dir: str) -> None:
 
     """
 
-    connect_str = config["AZURE_INPUT_VASA"]["conn_string"]
-    container_name = config["AZURE_INPUT_VASA"]["container_name"]
+    connect_str = config["AZURE_INPUT"]["conn_string"]
+    container_name = config["AZURE_INPUT"]["container_name"]
 
     # Create a BlobServiceClient object
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
@@ -115,7 +115,10 @@ def download_image(blob_name: str, config: yaml, local_file_dir: str) -> None:
             print(f"Cannot download blob: {e}")
 
 
-def get_blobs_by_folder_name(config: yaml) -> list:
+def get_blobs_by_folder_name(
+    config: yaml,
+    name_starts_with: str = "20231130 Ateieties-Jaruzales-saligatviai/",
+) -> list:
     """
 
     This function gets names (paths) of blobs that were uploaded today (by metadata).
@@ -132,8 +135,8 @@ def get_blobs_by_folder_name(config: yaml) -> list:
     """
 
     # Define the connection string and container name
-    connect_str = config["AZURE_INPUT_VASA"]["conn_string"]
-    container_name = config["AZURE_INPUT_VASA"]["container_name"]
+    connect_str = config["AZURE_INPUT"]["conn_string"]
+    container_name = config["AZURE_INPUT"]["container_name"]
 
     # Create a BlobServiceClient object
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
@@ -145,7 +148,7 @@ def get_blobs_by_folder_name(config: yaml) -> list:
     image_blobs_to_use = []
 
     current_blobs = container_client.list_blobs(
-        name_starts_with="RnD/Gatvių valymas/2023-2024/20231130 Ateieties-Jaruzales-saligatviai/",
+        name_starts_with=name_starts_with,
         include=["metadata"],
     )
     for blob in tqdm(current_blobs, desc="Getting current blobs"):
@@ -157,8 +160,8 @@ def get_blobs_by_folder_name(config: yaml) -> list:
 
 def upload_image(config: yaml, colored_img_name: str, img_bytes: bytes) -> None:
     # Define the connection string and container name
-    connect_str = config["AZURE_INPUT_VASA"]["conn_string"]
-    container_name = config["AZURE_INPUT_VASA"]["output_container_name"]
+    connect_str = config["AZURE_INPUT"]["conn_string"]
+    container_name = config["AZURE_INPUT"]["output_container_name"]
 
     # Define image content type
     image_content_type = ContentSettings(content_type="image/jpeg")
