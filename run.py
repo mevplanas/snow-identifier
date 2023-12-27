@@ -20,16 +20,18 @@ import cv2
 from src.azure_blobs import download_image, get_blobs_by_folder_name, upload_image
 
 # Utilis
-from src.custom_utils import image_link_generator, infer_label
+from src.custom_utils import image_link_generator, infer_label, blob_renamer
 
 # Image processing
 from src.image_processing import (
     get_closest_mask,
     get_closest,
-    get_intersection_poly,
     get_meta,
     get_poly_coords,
     get_img_datetime,
+    get_intersection_geom,
+    infer_snow,
+    COLOR_DICT,
 )
 
 # Import database models
@@ -58,6 +60,7 @@ def pipeline(env: str = "dev") -> None:
 
     # Extracting the padding for the snow box
     box_padding = config["BBOX_PADDING"]
+    infer_box_padding = config["INFER_BBOX_PADDING"]
 
     # # Initializing the database
     # conn = sqlite3.connect(os.path.join(current_dir, "database.db"))
@@ -69,8 +72,12 @@ def pipeline(env: str = "dev") -> None:
         # Define direcotry where image will be stored
         images_local_dir = os.path.join(current_dir, "images")
         os.makedirs(images_local_dir, exist_ok=True)
+        # Blob Prefix
+        prefix = config["AZURE_INPUT"]["blob_prefix"]
         # Get images blob name form Azure Storage
-        storage_images = get_blobs_by_folder_name(config=config)
+        storage_images = get_blobs_by_folder_name(
+            config=config, name_starts_with=prefix
+        )
         # Downloading images from Azure storage to local dir
         for img in tqdm(storage_images, desc="Downloading images from Azure Storage:"):
             download_image(
@@ -83,8 +90,9 @@ def pipeline(env: str = "dev") -> None:
                 if file.endswith(IMAGE_FORMATS):
                     # Adding the full path to the file
                     file = os.path.join(root, file)
+                    blob = blob_renamer(file)
                     # Appending to the list of images to infer
-                    images.append(file)
+                    images.append(blob)
 
     # Get inspection points from MSS database
     inspection_points = InspectionPoints.get_all()
@@ -99,7 +107,13 @@ def pipeline(env: str = "dev") -> None:
         result = db_images["image_name"].tolist()
 
         # Infering the images that are not in the database
-        images_to_process = [image for image in images if image not in result]
+        images_to_process_blobs = [image for image in images if image not in result]
+
+        # Create image path from blob name
+        images_to_process = [
+            os.path.join(images_local_dir, *blob.split("/"))
+            for blob in images_to_process_blobs
+        ]
 
         # Creating the output dir
         output_path = os.path.join(current_dir, "output")
@@ -157,17 +171,21 @@ def pipeline(env: str = "dev") -> None:
             closest_mask = get_closest_mask(center_point=center_point, masks=masks)
 
             # Get intersection polygon
-            poly = get_intersection_poly(
+            intersection_geom = get_intersection_geom(
                 closest_mask=closest_mask,
                 center_point=center_point,
                 padding=box_padding,
             )
 
-            poly_coords = get_poly_coords(poly)
+            poly_coords = get_poly_coords(intersection_geom)
 
             # Draw poly on image
             cv2.polylines(
-                img, [poly_coords], isClosed=False, color=(0, 255, 255), thickness=5
+                img,
+                [poly_coords],
+                isClosed=False,
+                color=COLOR_DICT.get("red"),
+                thickness=5,
             )
 
             # Converting the image to grayscale
@@ -178,8 +196,8 @@ def pipeline(env: str = "dev") -> None:
 
             # Set mean value to 1 if no intersection between center bbox
             # and closest mask was found
-            if poly.area == 0:
-                mean_val = 1.0
+            if intersection_geom.area == 0:
+                mean_val = infer_snow(image, image_output_path, infer_box_padding)
             else:
                 # Fill the polygon on the mask
                 cv2.fillPoly(mask, [poly_coords], 255)
@@ -198,8 +216,8 @@ def pipeline(env: str = "dev") -> None:
                 # Rounding to 2 decimals
                 mean_val = round(mean_val, 2)
 
-            # Saving colored image
-            cv2.imwrite(image_output_path, img)
+                # Saving colored image
+                cv2.imwrite(image_output_path, img)
 
             # Generating the image link
             image_link_colored = image_link_generator(
@@ -235,19 +253,21 @@ def pipeline(env: str = "dev") -> None:
 
             img_datetime = get_img_datetime(image)
 
+            img_datetime_format = f"{img_datetime[0:4]}-{img_datetime[5:7]}-{img_datetime[8:10]} {img_datetime[11:]}"
+
             # Label string value
             label = infer_label(mean_val, propbalities_dict)
 
             records.append(
                 {
-                    # "OBJECTID": obj_id,
-                    "image_name": image,
+                    "OBJECTID": obj_id,
+                    "image_name": blob_renamer(image),
                     "prediction_prob": mean_val,
                     "prediction_class": label,
                     "image_link_original": image_link,
                     "image_link_processed": image_link_colored,
                     "datetime_processed": str(datetime.now()),
-                    "image_datetime": img_datetime,
+                    "image_datetime": img_datetime_format,
                     "inspection_object": inspection_point_dict.get("object"),
                     "inspection_object_name": inspection_point_dict.get("object_name"),
                     "manager": inspection_point_dict.get("manager"),

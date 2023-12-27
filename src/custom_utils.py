@@ -8,7 +8,7 @@ from sys import platform
 def image_link_generator(
     file_path: str,
     image_dir_prefix: str = "images",
-    storage_url: str = "https://vp3ddata.blob.core.windows.net/raw-data-bo-nuotraukos/",
+    storage_url: str = "https://vp3ddata.blob.core.windows.net/snow-identifier-input/",
 ) -> str:
     if platform == "win32":
         # Creating the target name
@@ -39,3 +39,19 @@ def infer_label(prob: float, prob_dict: dict) -> str:
         label = "maybe_snow"
 
     return label
+
+
+def blob_renamer(full_path: str) -> str:
+    """
+    The blob
+    """
+
+    if platform == "win32":
+        # Creating the target name
+        target_name = full_path.split("images\\")[-1]
+        target_name = re.sub("\\\\", "/", target_name)
+    else:
+        target_name = full_path.split("images/")[-1]
+        target_name = re.sub("//|/", "/", target_name)
+
+    return target_name

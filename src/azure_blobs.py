@@ -117,7 +117,7 @@ def download_image(blob_name: str, config: yaml, local_file_dir: str) -> None:
 
 def get_blobs_by_folder_name(
     config: yaml,
-    name_starts_with: str = "RnD/Gatvių valymas/2023-2024/20231130 Ateieties-Jaruzales-saligatviai/",
+    name_starts_with: str = "20231130 Ateieties-Jaruzales-saligatviai/",
 ) -> list:
     """
 

@@ -64,7 +64,7 @@ def get_closest_mask(center_point, masks):
     return closest_mask
 
 
-def get_intersection_poly(closest_mask, center_point, padding: int):
+def get_intersection_geom(closest_mask, center_point, padding: int):
     # Get width and height coordinates from image center
     w, h = center_point
 
@@ -90,22 +90,33 @@ def get_intersection_poly(closest_mask, center_point, padding: int):
     segment = Polygon(line_struct)
 
     # Get intersected polygon boundries between bbox and closest mask polygons
-    intersection = segment.intersection(center_bbox_shape)
+    intersection_geom = segment.intersection(center_bbox_shape)
 
-    return intersection
+    return intersection_geom
 
 
-def get_poly_coords(intersection):
-    # Get x, y coords from intersected polygon
-    x, y = intersection.exterior.coords.xy
+def get_poly(geom):
+    x, y = geom.exterior.coords.xy
     # Create list of tuples with coordinates
     coord_pairs = list(zip(x, y))
     # Convert each tuple to list element
     coord_pairs = [list([int(y) for y in x]) for x in coord_pairs]
     # Convert list to numpy array
     intersection_poly = np.array(coord_pairs)
-
     return intersection_poly
+
+
+def get_poly_coords(intersection):
+    # Check geometry type
+    if intersection.geom_type == "GeometryCollection":
+        # If type geometry collection iterate until Polygon detected
+        for geom in intersection.geoms:
+            if geom.geom_type == "Polygon":
+                poly = get_poly(geom)
+                return poly
+    else:
+        poly = get_poly(intersection)
+        return poly
 
 
 def get_closest(input_point: tuple, intrest_points: list[dict]) -> dict:
@@ -275,11 +286,6 @@ def get_img_datetime(img_path: str):
     # Get EXIF data
     exifd = img._getexif()
 
-    if exifd == None:
-        long = 0.00
-        lat = 0.00
-
-        return long, lat
     # Getting keys of EXIF data
     keys = list(exifd.keys())
 
