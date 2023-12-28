@@ -124,6 +124,8 @@ def get_poly_coords(intersection):
                 else:
                     poly = get_poly(geom_holder)
                     return poly
+            poly = get_poly(geom_holder)
+            return poly
 
     elif intersection.geom_type == "LineString":
         return Polygon()
@@ -287,7 +289,7 @@ def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> floa
     )
 
     # Saving colored image
-    cv2.imwrite(output_path, colored_image)
+    cv2.imwrite(output_path, cv2.cvtColor(colored_image, cv2.COLOR_RGB2BGR))
 
     # Returning the probability
     return mean_pixel_value

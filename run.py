@@ -78,6 +78,8 @@ def pipeline(env: str = "dev") -> None:
         storage_images = get_blobs_by_folder_name(
             config=config, name_starts_with=prefix
         )
+        # 20231204 Fabijoniskes/DJI_0764
+        # 20231203 Kalvarijų gatvių valymas
         # Downloading images from Azure storage to local dir
         for img in tqdm(storage_images, desc="Downloading images from Azure Storage:"):
             download_image(
@@ -222,7 +224,7 @@ def pipeline(env: str = "dev") -> None:
                     mean_val = round(mean_val, 2)
 
                     # Saving colored image
-                    cv2.imwrite(image_output_path, img)
+                    cv2.imwrite(image_output_path, cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
 
             # Generating the image link
             image_link_colored = image_link_generator(
