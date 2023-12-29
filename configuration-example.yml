@@ -3,7 +3,7 @@ INFER_BBOX_PADDING: 25
 
 PATH_DETECTION_MODEL: 
   name: path_identifier.pt
-  threshold: 0.3
+  threshold: 0.27
 
 LABELS_DICT: {'no_snow': 0.5, 'maybe_snow': 0.75, 'snow': 1.0}
 
