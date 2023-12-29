@@ -79,7 +79,7 @@ def pipeline(env: str = "dev") -> None:
             config=config, name_starts_with=prefix
         )
         # 20231204 Fabijoniskes/DJI_0764
-        # 20231203 Kalvarijų gatvių valymas
+        #
         # Downloading images from Azure storage to local dir
         for img in tqdm(storage_images, desc="Downloading images from Azure Storage:"):
             download_image(
