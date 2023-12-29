@@ -76,10 +76,10 @@ def pipeline(env: str = "dev") -> None:
         prefix = config["AZURE_INPUT"]["blob_prefix"]
         # Get images blob name form Azure Storage
         storage_images = get_blobs_by_folder_name(
-            config=config, name_starts_with=prefix
+            config=config,
+            name_starts_with=prefix,
         )
-        # 20231204 Fabijoniskes/DJI_0764
-        # 20231203 Kalvarijų gatvių valymas
+
         # Downloading images from Azure storage to local dir
         for img in tqdm(storage_images, desc="Downloading images from Azure Storage:"):
             download_image(
@@ -127,6 +127,7 @@ def pipeline(env: str = "dev") -> None:
             obj_id = 0
         else:
             obj_id += 1
+
     except Exception as e:
         print(e)
         obj_id = 0

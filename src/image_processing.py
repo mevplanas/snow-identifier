@@ -281,15 +281,15 @@ def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> floa
     bottom_right = x_max, y_min
 
     # Converting the colored img to RGB
-    colored_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2RGB)
+    colored_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
 
     # Drawubg a rectangle on top
     colored_image = cv2.rectangle(
-        colored_image, top_left, bottom_right, color=COLOR_DICT.get("red"), thickness=2
+        colored_image, top_left, bottom_right, color=COLOR_DICT.get("blue"), thickness=2
     )
 
     # Saving colored image
-    cv2.imwrite(output_path, cv2.cvtColor(colored_image, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(output_path, colored_image)
 
     # Returning the probability
     return mean_pixel_value
