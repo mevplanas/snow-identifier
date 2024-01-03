@@ -285,7 +285,7 @@ def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> floa
 
     # Drawubg a rectangle on top
     colored_image = cv2.rectangle(
-        colored_image, top_left, bottom_right, color=COLOR_DICT.get("blue"), thickness=2
+        colored_image, top_left, bottom_right, color=COLOR_DICT.get("red"), thickness=20
     )
 
     # Saving colored image
