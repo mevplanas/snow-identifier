@@ -229,73 +229,71 @@ def pipeline(env: str = "dev") -> None:
                     # Saving colored image
                     cv2.imwrite(image_output_path, cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
 
-                # Generating the image link
-                image_link_colored = image_link_generator(
-                    image, storage_url=config["AZURE_INPUT"]["output_container_url"]
-                )
-                try:
-                    # Uploading image to Azure Storage
-                    with open(file=image_output_path, mode="rb") as data:
-                        _img = image.split(os.sep)
-                        img_index = _img.index("images") + 1
-                        blob_img_path = os.path.join(*_img[img_index:])
-                        # Uploading
-                        upload_image(
-                            config=config,
-                            colored_img_name=blob_img_path,
-                            img_bytes=data,
-                        )
-                except Exception as e:
-                    print(e)
+            # Generating the image link
+            image_link_colored = image_link_generator(
+                image, storage_url=config["AZURE_INPUT"]["output_container_url"]
+            )
+            try:
+                # Uploading image to Azure Storage
+                with open(file=image_output_path, mode="rb") as data:
+                    _img = image.split(os.sep)
+                    img_index = _img.index("images") + 1
+                    blob_img_path = os.path.join(*_img[img_index:])
+                    # Uploading
+                    upload_image(
+                        config=config,
+                        colored_img_name=blob_img_path,
+                        img_bytes=data,
+                    )
+            except Exception as e:
+                print(e)
 
-                # Generating the image link (original)
-                image_link = image_link_generator(image)
+            # Generating the image link (original)
+            image_link = image_link_generator(image)
 
-                # Getting the metadata
-                x, y = get_meta(image)
+            # Getting the metadata
+            x, y = get_meta(image)
 
-                # Crete Point geometry
-                point_geom = str(Point(y, x))
+            # Crete Point geometry
+            point_geom = str(Point(y, x))
 
-                # Get closest inpection point from inspection_points list
-                inspection_point_dict = get_closest(
-                    (x, y), intrest_points=inspection_points
-                )
+            # Get closest inpection point from inspection_points list
+            inspection_point_dict = get_closest(
+                (x, y), intrest_points=inspection_points
+            )
 
-                # Get image timestamp
-                img_datetime = get_img_datetime(image)
+            # Get image timestamp
+            img_datetime = get_img_datetime(image)
 
-                # Format timestamp
-                img_datetime_format = f"{img_datetime[0:4]}-{img_datetime[5:7]}-{img_datetime[8:10]} {img_datetime[11:]}"
+            # Format timestamp
+            img_datetime_format = f"{img_datetime[0:4]}-{img_datetime[5:7]}-{img_datetime[8:10]} {img_datetime[11:]}"
 
-                # Label string value
-                label = infer_label(mean_val, propbalities_dict)
+            # Label string value
+            label = infer_label(mean_val, propbalities_dict)
 
-                # Append prediction and other information to list
-                records.append(
-                    {
-                        "OBJECTID": obj_id,
-                        "image_name": blob_renamer(image),
-                        "prediction_prob": mean_val,
-                        "prediction_class": label,
-                        "image_link_original": image_link,
-                        "image_link_processed": image_link_colored,
-                        "datetime_processed": str(datetime.now()),
-                        "image_datetime": img_datetime_format,
-                        "inspection_object": inspection_point_dict.get("object"),
-                        "inspection_object_name": inspection_point_dict.get(
-                            "object_name"
-                        ),
-                        "manager": inspection_point_dict.get("manager"),
-                        "Shape": point_geom,
-                    }
-                )
+            # Append prediction and other information to list
+            records.append(
+                {
+                    "OBJECTID": obj_id,
+                    "image_name": blob_renamer(image),
+                    "prediction_prob": mean_val,
+                    "prediction_class": label,
+                    "image_link_original": image_link,
+                    "image_link_processed": image_link_colored,
+                    "datetime_processed": str(datetime.now()),
+                    "image_datetime": img_datetime_format,
+                    "inspection_object": inspection_point_dict.get("object"),
+                    "inspection_object_name": inspection_point_dict.get("object_name"),
+                    "manager": inspection_point_dict.get("manager"),
+                    "Shape": point_geom,
+                }
+            )
 
-                # Incrementing the object id
-                obj_id += 1
+            # Incrementing the object id
+            obj_id += 1
 
-                # Removing the image from the local dir
-                os.remove(image)
+            # Removing the image from the local dir
+            os.remove(image)
 
         except Exception as e:
             print(e)
