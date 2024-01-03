@@ -17,14 +17,26 @@ _TAGS_r = dict(((v, k) for k, v in TAGS.items()))
 # Define image formats
 IMAGE_FORMATS = (".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG")
 
-# Creating a dictionary of colors
-COLOR_DICT = {
+# Creating a dictionary of BGR colors
+COLOR_DICT_BGR = {
     "red": (0, 0, 255),
     "green": (0, 255, 0),
     "blue": (255, 0, 0),
     "yellow": (0, 255, 255),
     "magenta": (255, 0, 255),
     "cyan": (255, 255, 0),
+    "white": (255, 255, 255),
+    "black": (0, 0, 0),
+}
+
+# Creating a dictionary of RGB colors
+COLOR_DICT_RGB = {
+    "red": (255, 0, 0),
+    "green": (0, 255, 0),
+    "blue": (0, 0, 255),
+    "yellow": (255, 255, 0),
+    "magenta": (255, 0, 255),
+    "cyan": (0, 255, 255),
     "white": (255, 255, 255),
     "black": (0, 0, 0),
 }
@@ -285,7 +297,11 @@ def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> floa
 
     # Drawubg a rectangle on top
     colored_image = cv2.rectangle(
-        colored_image, top_left, bottom_right, color=COLOR_DICT.get("blue"), thickness=2
+        colored_image,
+        top_left,
+        bottom_right,
+        color=COLOR_DICT_BGR.get("red"),
+        thickness=20,
     )
 
     # Saving colored image
