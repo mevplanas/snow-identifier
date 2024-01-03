@@ -31,7 +31,8 @@ from src.image_processing import (
     get_img_datetime,
     get_intersection_geom,
     infer_snow,
-    COLOR_DICT,
+    COLOR_DICT_RGB,
+    COLOR_DICT_BGR,
 )
 
 # Import database models
@@ -197,7 +198,7 @@ def pipeline(env: str = "dev") -> None:
                         img,
                         [poly_coords],
                         isClosed=False,
-                        color=COLOR_DICT.get("blue"),
+                        color=COLOR_DICT_RGB.get("red"),
                         thickness=20,
                     )
 
