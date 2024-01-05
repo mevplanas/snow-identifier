@@ -337,7 +337,7 @@ def predict_snow(
         img_path: str, 
         output_path: str,
         yolo_model: YOLO, 
-        yolo_treshold: float = 0.5,
+        yolo_threshold: float = 0.5,
         center_padding: int = 25,
         ):
     try:
@@ -348,7 +348,7 @@ def predict_snow(
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
         # Applying the model
-        results = yolo_model.predict(img_path, conf=yolo_treshold, verbose=False)
+        results = yolo_model.predict(img_path, conf=yolo_threshold, verbose=False)
 
         # Defining the initial mean value 
         mean_val = 0
