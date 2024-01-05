@@ -429,3 +429,4 @@ def predict_snow(
             
     except Exception as e:
         print(e)
+        return 0, False
