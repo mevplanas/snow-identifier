@@ -15,7 +15,7 @@ def pipeline():
     data_path = os.path.join(cur_path, 'configuration.yaml')
 
     # Initiating the model 
-    model.train(data=data_path, batch=4, epochs=200)
+    model.train(data=data_path, batch=16, epochs=400)
 
 if __name__ == '__main__':
     # Setting the KMP_DUPLICATE_LIB_OK to True 

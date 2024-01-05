@@ -3,6 +3,9 @@ from datetime import date
 from shapely.geometry import Polygon
 from shapely import wkt
 
+# YOLO modeling 
+from ultralytics import YOLO
+
 # Array math
 import numpy as np
 
@@ -310,7 +313,6 @@ def infer_snow(image_path: str, output_path: str, box_padding: int = 25) -> floa
     # Returning the probability
     return mean_pixel_value
 
-
 def get_img_datetime(img_path: str):
     img = Image.open(img_path)
 
@@ -330,3 +332,100 @@ def get_img_datetime(img_path: str):
     date_time = exifd[_TAGS_r["DateTimeOriginal"]]
 
     return date_time
+
+def predict_snow(
+        img_path: str, 
+        output_path: str,
+        yolo_model: YOLO, 
+        yolo_treshold: float = 0.5,
+        center_padding: int = 25,
+        ):
+    try:
+        # Reading the image
+        img = cv2.imread(img_path)
+
+        # Going to RGB
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # Applying the model
+        results = yolo_model.predict(img_path, conf=yolo_treshold, verbose=False)
+
+        # Defining the initial mean value 
+        mean_val = 0
+
+        # Defining the initial boolean indicating the ML found an intersection
+        intersection_found = False
+
+        # Extracting all the masks
+        # If mask empty apply infer_snow function
+        if results[0].masks == None:
+            mean_val = infer_snow(img_path, output_path)
+        # Else apply closest mask
+        else:
+            masks = results[0].masks.xy
+
+            # Calculating the center point of the image
+            center_point = (img.shape[1] / 2, img.shape[0] / 2)
+
+            # Getting closest mask
+            closest_mask = get_closest_mask(center_point=center_point, masks=masks)
+
+            # Get intersection polygon
+            intersection_geom = get_intersection_geom(
+                closest_mask=closest_mask,
+                center_point=center_point,
+                padding=center_padding,
+            )
+
+            poly_coords = get_poly_coords(intersection_geom)
+
+            # Check if any intersection return
+            if intersection_geom.area == 0:
+                # If not calculate snow avg value with infer function
+                mean_val = infer_snow(img_path, output_path)
+            else:
+                # If intersection found set boolean to True
+                intersection_found = True
+
+                # Draw poly on image
+                cv2.polylines(
+                    img,
+                    [poly_coords],
+                    isClosed=False,
+                    color=COLOR_DICT_RGB.get("red"),
+                    thickness=20,
+                )
+
+                # Converting the image to grayscale
+                img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+                # Create a mask
+                mask = np.zeros(img.shape[:2], dtype=np.uint8)
+
+                # Set mean value to 1 if no intersection between center bbox
+                # and closest mask was found
+                # Fill the polygon on the mask
+                cv2.fillPoly(mask, [poly_coords], 255)
+
+                # Apply the mask to the image
+                masked_image = cv2.bitwise_and(img_gray, img_gray, mask=mask)
+
+                # Calculate the mean pixel value
+                # Use mask to ignore zero pixels in the mean calculation
+
+                mean_val = cv2.mean(masked_image, mask=mask)
+
+                # Limiting the mean value to 0 - 1
+                mean_val = np.clip(mean_val[0] / 255, 0, 1)
+
+                # Rounding to 2 decimals
+                mean_val = round(mean_val, 2)
+
+                # Saving colored image
+                cv2.imwrite(output_path, cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+
+        # Returning the mean value 
+        return mean_val, intersection_found
+            
+    except Exception as e:
+        print(e)

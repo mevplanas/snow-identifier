@@ -15,3 +15,6 @@ FastSAM-s.pt
 input_points/
 labels/
 runs/
+FastSAM-*
+yolov8*
+path_ml/machine_learning
